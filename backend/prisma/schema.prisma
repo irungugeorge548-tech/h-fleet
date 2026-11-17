@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String   @unique
+  password  String
+  pin       String
+  role      String   @default("RIDER") // RIDER, DRIVER
+  createdAt DateTime @default(now())
+  rides     Ride[]
+}
+
+model Ride {
+  id          String   @id @default(cuid())
+  riderId     String
+  pickup      String
+  destination String
+  fare        Float
+  status      String   @default("SEARCHING") // SEARCHING, ACCEPTED, COMPLETED
+  driverName  String?
+  rider       User     @relation(fields: [riderId], references: [id])
+  createdAt   DateTime @default(now())
+}
