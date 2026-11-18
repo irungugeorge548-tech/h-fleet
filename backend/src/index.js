@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/auth');
 const rideRoutes = require('./routes/rides');
+const walletRoutes = require('./routes/wallet');
 
 const app = express();
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5175,https://h-fleet.vercel.app')
@@ -12,6 +13,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/rides', rideRoutes);
+app.use('/api/wallet', walletRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', app: 'H-Fleet' }));
 
