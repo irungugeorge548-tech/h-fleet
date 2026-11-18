@@ -5,7 +5,9 @@ const authRoutes = require('./routes/auth');
 const rideRoutes = require('./routes/rides');
 
 const app = express();
-app.use(cors({ origin: 'http://localhost:5175' }));
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5175,https://h-fleet.vercel.app')
+  .split(',').map(o => o.trim().replace(/\/$/, ''));
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
