@@ -37,11 +37,14 @@ export default function Home({ logout }) {
     <div className="h-screen flex flex-col bg-white">
       {/* Map */}
       <div className="flex-1 relative">
-        <MapContainer center={pos} zoom={14} className="h-full w-full">
+        <MapContainer center={pos} zoom={14} zoomControl={false} className="h-full w-full">
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <LocationMarker setPos={setPos} />
           <Marker position={pos} />
         </MapContainer>
+        <button className="absolute top-4 left-4 z-[1000] w-10 h-10 rounded-full bg-white shadow flex items-center justify-center text-xl">☰</button>
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-white shadow rounded-full px-4 py-1.5 font-extrabold text-bolt">H-Fleet</div>
+        <button className="absolute top-4 right-4 z-[1000] w-10 h-10 rounded-full bg-white shadow flex items-center justify-center">🔔</button>
       </div>
 
       {/* Bottom sheet like Bolt */}
