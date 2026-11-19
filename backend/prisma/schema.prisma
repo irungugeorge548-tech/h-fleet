@@ -7,25 +7,56 @@ datasource db {
   url      = "file:./dev.db"
 }
 
+// Legacy table, no longer used: riders now sign in with their H-Pesa account.
 model User {
   id        String   @id @default(cuid())
   name      String
   phone     String   @unique
   password  String
   pin       String
-  role      String   @default("RIDER") // RIDER, DRIVER
+  role      String   @default("RIDER")
   createdAt DateTime @default(now())
-  rides     Ride[]
 }
 
 model Ride {
   id          String   @id @default(cuid())
-  riderId     String
+  riderId     String   // H-Pesa user id (one account across the apps)
+  riderPhone  String?
   pickup      String
+  pickupLat   Float?
+  pickupLng   Float?
   destination String
+  destLat     Float?
+  destLng     Float?
+  distanceKm  Float?
   fare        Float
-  status      String   @default("SEARCHING") // SEARCHING, ACCEPTED, COMPLETED
+  status      String   @default("PENDING") // PENDING, ACCEPTED, FAILED, CANCELLED, COMPLETED
+  failReason  String?
   driverName  String?
-  rider       User     @relation(fields: [riderId], references: [id])
   createdAt   DateTime @default(now())
+
+  @@index([riderId])
+}
+
+model EmergencyContact {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  phone     String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model SupportMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  userName  String?
+  userPhone String?
+  subject   String
+  message   String
+  status    String   @default("OPEN")
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

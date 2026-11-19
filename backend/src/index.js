@@ -1,9 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const authRoutes = require('./routes/auth');
-const rideRoutes = require('./routes/rides');
-const walletRoutes = require('./routes/wallet');
 
 const app = express();
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5175,https://h-fleet.vercel.app')
@@ -11,11 +8,18 @@ const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5175,https
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
-app.use('/api/auth', authRoutes);
-app.use('/api/rides', rideRoutes);
-app.use('/api/wallet', walletRoutes);
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/rides', require('./routes/rides'));
+app.use('/api/wallet', require('./routes/wallet'));
+app.use('/api/account', require('./routes/account'));
+app.use('/api/safety', require('./routes/safety'));
+app.use('/api/support', require('./routes/support'));
 
-app.get('/api/health', (req, res) => res.json({ status: 'ok', app: 'H-Fleet' }));
+app.get('/api/health', (req, res) => res.json({ status: 'ok', app: 'H-Fleet', hpesa: !!process.env.HPESA_API, key: !!process.env.HFLEET_API_KEY }));
 
-const PORT = process.env.PORT || 5002;
-app.listen(PORT, () => console.log(`H-Fleet backend on http://localhost:${PORT}`));
+module.exports = app;
+
+if (require.main === module) {
+  const PORT = process.env.PORT || 5002;
+  app.listen(PORT, () => console.log(`H-Fleet backend on http://localhost:${PORT}`));
+}

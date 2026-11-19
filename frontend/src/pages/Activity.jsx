@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
+import { Link } from 'react-router-dom'
+import { get } from '../lib/api'
 import TabBar from '../components/TabBar'
+import Icon from '../components/Icon'
 
 const TABS = ['Rides', 'Payments', 'Reservations']
 
@@ -8,6 +10,7 @@ const statusLabel = (s) => ({
   COMPLETED: 'Ride completed',
   ACCEPTED: 'Driver assigned',
   SEARCHING: 'Finding a driver',
+  CANCELLED: 'Cancelled and refunded',
 }[s] || s)
 
 const fmtDate = (iso) => {
@@ -39,11 +42,10 @@ export default function Activity() {
   const [tab, setTab] = useState('Rides')
   const [rides, setRides] = useState(null)
   const [error, setError] = useState('')
-  const token = localStorage.getItem('hfleet_token')
 
   useEffect(() => {
-    axios.get('/api/rides/history', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => setRides(r.data))
+    get('/api/rides/history')
+      .then(setRides)
       .catch(() => setError('Could not load your activity. Check your connection and try again.'))
   }, [])
 
@@ -51,7 +53,7 @@ export default function Activity() {
     <div className="h-screen flex flex-col bg-white">
       <header className="px-5 pt-5 flex items-center justify-between">
         <h1 className="text-3xl font-extrabold">Activity</h1>
-        <span className="text-xl">🔔</span>
+        <Link to="/notifications" aria-label="Notifications"><Icon name="bell" size={26} /></Link>
       </header>
 
       <div className="flex border-b mt-4">
@@ -77,7 +79,7 @@ export default function Activity() {
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold truncate">{r.destination}</p>
                   <p className="text-xs text-gray-500">{fmtDate(r.createdAt)}</p>
-                  <p className="text-xs text-bolt mt-1">✓ {statusLabel(r.status)}</p>
+                  <p className={`text-xs mt-1 flex items-center gap-1 ${r.status === 'CANCELLED' ? 'text-gray-500' : 'text-bolt'}`}><Icon name="check" size={13} />{statusLabel(r.status)}</p>
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-bolt">KES {r.fare}</p>

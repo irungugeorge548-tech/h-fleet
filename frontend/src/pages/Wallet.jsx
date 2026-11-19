@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
+import { get, HPESA_URL } from '../lib/api'
 import TabBar from '../components/TabBar'
 
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -7,18 +7,15 @@ const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numer
 export default function Wallet() {
   const [balance, setBalance] = useState(undefined) // undefined = loading, null = unavailable
   const [rides, setRides] = useState([])
-  const headers = { Authorization: `Bearer ${localStorage.getItem('hfleet_token')}` }
 
-  useEffect(() => {
-    axios.get('/api/wallet/balance', { headers })
-      .then(r => setBalance(r.data.balance))
-      .catch(() => setBalance(null))
-    axios.get('/api/rides/history', { headers })
-      .then(r => setRides(r.data))
-      .catch(() => {})
-  }, [])
+  const load = () => {
+    get('/api/wallet/balance').then(r => setBalance(r.balance)).catch(() => setBalance(null))
+    get('/api/rides/history').then(setRides).catch(() => {})
+  }
+  useEffect(() => { load() }, [])
 
-  const spent = rides.reduce((s, r) => s + (r.fare || 0), 0)
+  const paid = rides.filter(r => r.status !== 'CANCELLED')
+  const spent = paid.reduce((s, r) => s + (r.fare || 0), 0)
 
   return (
     <div className="h-screen flex flex-col bg-white">
@@ -31,7 +28,9 @@ export default function Wallet() {
             {balance === undefined ? '…' : balance === null ? '—' : `KES ${Number(balance).toLocaleString()}`}
           </p>
           {balance === null && <p className="text-xs text-white/80 mt-2">Balance unavailable right now. H-Pesa could not be reached.</p>}
+          {balance === null && <button onClick={() => { setBalance(undefined); load() }} className="mt-3 bg-white/20 rounded-full px-4 py-1.5 text-sm">Try again</button>}
           <p className="text-xs text-white/70 mt-4">Rides are paid from your H-Pesa wallet.</p>
+          {HPESA_URL && <a href={HPESA_URL} target="_blank" rel="noreferrer" className="inline-block mt-3 bg-white text-bolt font-semibold rounded-full px-5 py-2 text-sm">Top up in H-Pesa</a>}
         </div>
 
         <div className="grid grid-cols-2 gap-3 mt-4">
@@ -41,7 +40,7 @@ export default function Wallet() {
           </div>
           <div className="border rounded-2xl p-4">
             <p className="text-xs text-gray-500">Rides paid</p>
-            <p className="text-xl font-bold mt-1">{rides.length}</p>
+            <p className="text-xl font-bold mt-1">{paid.length}</p>
           </div>
         </div>
 
@@ -54,7 +53,7 @@ export default function Wallet() {
               <p className="font-semibold truncate">Ride to {r.destination}</p>
               <p className="text-xs text-gray-500">{fmtDate(r.createdAt)}</p>
             </div>
-            <p className="font-bold">− KES {r.fare}</p>
+            <p className="font-bold">{r.status === 'CANCELLED' ? <span className="text-gray-500">Refunded</span> : `− KES ${r.fare}`}</p>
           </div>
         ))}
         <div className="h-6" />
