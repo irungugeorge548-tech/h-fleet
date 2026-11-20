@@ -10,6 +10,7 @@ app.use(express.json());
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/rides', require('./routes/rides'));
+app.use('/api/hpesa', require('./routes/hpesa'));
 app.use('/api/wallet', require('./routes/wallet'));
 app.use('/api/account', require('./routes/account'));
 app.use('/api/safety', require('./routes/safety'));

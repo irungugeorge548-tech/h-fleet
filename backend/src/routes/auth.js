@@ -1,20 +1,39 @@
 const express = require('express');
-const hpesa = require('../lib/hpesa');
+const bcrypt = require('bcryptjs');
+const prisma = require('../lib/db');
+const { sign, normalizePhone, validPhone, publicUser } = require('../lib/session');
 const router = express.Router();
 
-const fail = (res, err) => {
-  if (err.status) return res.status(err.status).json({ error: err.message });
-  res.status(503).json({ error: 'H-Pesa is not available right now. Please try again.' });
-};
-const shape = (d) => ({ token: d.token, user: { id: d.user.id, name: d.user.name, phone: d.user.phone, email: d.user.email } });
-
-// Riders use their H-Pesa account, so there is no separate H-Fleet password to remember.
-router.post('/login', async (req, res) => {
-  try { res.json(shape(await hpesa.login(req.body?.phone, req.body?.password))); } catch (err) { fail(res, err); }
+// H-Fleet has its own accounts. Connecting an H-Pesa wallet is optional (see /api/hpesa).
+router.post('/register', async (req, res) => {
+  try {
+    const name = String(req.body?.name || '').trim().slice(0, 60);
+    const phone = normalizePhone(req.body?.phone);
+    const email = String(req.body?.email || '').trim().toLowerCase().slice(0, 100);
+    const password = String(req.body?.password || '');
+    if (name.length < 2) return res.status(400).json({ error: 'Enter your full name' });
+    if (!validPhone(phone)) return res.status(400).json({ error: 'Enter a valid Kenyan phone number' });
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address' });
+    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    if (await prisma.user.findUnique({ where: { phone } })) return res.status(400).json({ error: 'An H-Fleet account with this phone number already exists. Log in instead.' });
+    if (email && await prisma.user.findUnique({ where: { email } })) return res.status(400).json({ error: 'An H-Fleet account with this email already exists.' });
+    const user = await prisma.user.create({ data: { name, phone, email: email || null, password: await bcrypt.hash(password, 10), role: 'RIDER' } });
+    res.json({ token: sign(user.id), user: publicUser(user) });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not create your account. Please try again.' });
+  }
 });
 
-router.post('/register', async (req, res) => {
-  try { res.json(shape(await hpesa.register(req.body || {}))); } catch (err) { fail(res, err); }
+router.post('/login', async (req, res) => {
+  try {
+    const phone = normalizePhone(req.body?.phone);
+    const user = await prisma.user.findUnique({ where: { phone } });
+    const ok = user && await bcrypt.compare(String(req.body?.password || ''), user.password);
+    if (!ok) return res.status(400).json({ error: 'Wrong phone number or password' });
+    res.json({ token: sign(user.id), user: publicUser(user) });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not log you in. Please try again.' });
+  }
 });
 
 module.exports = router;

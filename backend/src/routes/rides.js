@@ -15,6 +15,7 @@ const clean = (s, n = 120) => String(s || '').trim().slice(0, n);
 router.post('/request', auth, async (req, res) => {
   const { pickup, destination, distanceKm, pin } = req.body || {};
   if (!validPoint(pickup) || !validPoint(destination)) return res.status(400).json({ error: 'Choose a pickup and a destination' });
+  if (!req.user.hpesaPhone) return res.status(403).json({ error: 'Connect your H-Pesa wallet to pay for rides', code: 'NOT_LINKED' });
   if (!pin) return res.status(400).json({ error: 'Enter your H-Pesa PIN' });
 
   const a = { lat: num(pickup.lat), lng: num(pickup.lng) };
@@ -30,7 +31,7 @@ router.post('/request', auth, async (req, res) => {
 
   const ride = await prisma.ride.create({
     data: {
-      riderId: req.userId, riderPhone: req.user.phone,
+      riderId: req.userId, riderPhone: req.user.hpesaPhone,
       pickup: clean(pickup.name) || 'Pickup', pickupLat: a.lat, pickupLng: a.lng,
       destination: clean(destination.name) || 'Destination', destLat: b.lat, destLng: b.lng,
       distanceKm: Math.round(km * 10) / 10, fare, status: 'PENDING',
@@ -43,7 +44,7 @@ router.post('/request', auth, async (req, res) => {
   };
 
   try {
-    await hpesa.charge({ phone: req.user.phone, pin: String(pin), amount: fare, reference, description: `Ride to ${ride.destination}` });
+    await hpesa.charge({ phone: req.user.hpesaPhone, pin: String(pin), amount: fare, reference, description: `Ride to ${ride.destination}` });
   } catch (err) {
     // If H-Pesa did not answer we cannot tell whether the money moved, so ask it.
     if (!err.status) {

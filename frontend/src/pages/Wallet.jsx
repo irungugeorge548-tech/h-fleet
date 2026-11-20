@@ -1,15 +1,25 @@
 import { useEffect, useState } from 'react'
-import { get, HPESA_URL } from '../lib/api'
+import { get, post, getHpesaToken, setHpesaToken, HPESA_URL } from '../lib/api'
 import TabBar from '../components/TabBar'
+import ConnectHpesa from '../components/ConnectHpesa'
 
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
+// "Top up" must open the SAME H-Pesa account that is connected here. With the wallet token we sign that
+// account in directly; otherwise we open H-Pesa's login with the connected number filled in.
+const topUpUrl = (phone) => {
+  const t = getHpesaToken()
+  if (t) return `${HPESA_URL}/#sso=${encodeURIComponent(t)}&next=/deposit`
+  return `${HPESA_URL}/login${phone ? `?phone=${encodeURIComponent(phone)}` : ''}`
+}
+
 export default function Wallet() {
-  const [balance, setBalance] = useState(undefined) // undefined = loading, null = unavailable
+  const [w, setW] = useState(undefined) // undefined = loading, null = unavailable, else { linked, reconnect?, balance? }
+  const balance = w === undefined ? undefined : w === null || w.balance === undefined ? null : w.balance
   const [rides, setRides] = useState([])
 
   const load = () => {
-    get('/api/wallet/balance').then(r => setBalance(r.balance)).catch(() => setBalance(null))
+    get('/api/wallet/balance').then(setW).catch(() => setW(null))
     get('/api/rides/history').then(setRides).catch(() => {})
   }
   useEffect(() => { load() }, [])
@@ -22,16 +32,22 @@ export default function Wallet() {
       <div className="flex-1 overflow-y-auto px-5 pt-6">
         <h1 className="text-3xl font-extrabold">Wallet</h1>
 
+        {w && w.linked === false && <div className="mt-5"><ConnectHpesa light onDone={() => { setW(undefined); load() }} /></div>}
+        {w && w.linked && w.reconnect && <div className="mt-5"><ConnectHpesa light reconnect onDone={() => { setW(undefined); load() }} /></div>}
+        {!(w && (w.linked === false || w.reconnect)) && (
         <div className="mt-5 rounded-3xl bg-bolt text-white p-6 shadow-lg">
           <p className="text-sm text-white/80">H-Pesa balance</p>
           <p className="text-4xl font-extrabold mt-1">
             {balance === undefined ? '…' : balance === null ? '—' : `KES ${Number(balance).toLocaleString()}`}
           </p>
           {balance === null && <p className="text-xs text-white/80 mt-2">Balance unavailable right now. H-Pesa could not be reached.</p>}
-          {balance === null && <button onClick={() => { setBalance(undefined); load() }} className="mt-3 bg-white/20 rounded-full px-4 py-1.5 text-sm">Try again</button>}
-          <p className="text-xs text-white/70 mt-4">Rides are paid from your H-Pesa wallet.</p>
-          {HPESA_URL && <a href={HPESA_URL} target="_blank" rel="noreferrer" className="inline-block mt-3 bg-white text-bolt font-semibold rounded-full px-5 py-2 text-sm">Top up in H-Pesa</a>}
-        </div>
+          {balance === null && <button onClick={() => { setW(undefined); load() }} className="mt-3 bg-white/20 rounded-full px-4 py-1.5 text-sm">Try again</button>}
+          <p className="text-xs text-white/70 mt-4">Rides are paid from your connected H-Pesa wallet.</p>
+          <div className="flex gap-2 flex-wrap">
+            {HPESA_URL && <a href={topUpUrl(w?.phone)} className="inline-block mt-3 bg-white text-bolt font-semibold rounded-full px-5 py-2 text-sm">Top up in H-Pesa</a>}
+            {w?.linked && <button onClick={async () => { if (!window.confirm('Disconnect H-Pesa from H-Fleet? Your H-Fleet account stays.')) return; try { await post('/api/hpesa/unlink'); setHpesaToken(null); setW(undefined); load() } catch { /* ignore */ } }} className="mt-3 bg-white/20 rounded-full px-4 py-2 text-sm">Disconnect</button>}
+          </div>
+        </div>)}
 
         <div className="grid grid-cols-2 gap-3 mt-4">
           <div className="border rounded-2xl p-4">

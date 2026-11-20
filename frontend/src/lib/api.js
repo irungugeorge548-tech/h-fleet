@@ -1,7 +1,9 @@
 import axios from 'axios'
 
 export const getToken = () => localStorage.getItem('hfleet_token')
-const headers = () => ({ Authorization: `Bearer ${getToken()}` })
+export const getHpesaToken = () => { try { return localStorage.getItem('hfleet_hpesa_token') } catch { return null } }
+export const setHpesaToken = (t) => { try { t ? localStorage.setItem('hfleet_hpesa_token', t) : localStorage.removeItem('hfleet_hpesa_token') } catch { /* ignore */ } }
+const headers = () => ({ Authorization: `Bearer ${getToken()}`, ...(getHpesaToken() ? { 'x-hpesa-token': getHpesaToken() } : {}) })
 export const get = (url) => axios.get(url, { headers: headers() }).then(r => r.data)
 export const post = (url, body) => axios.post(url, body, { headers: headers() }).then(r => r.data)
 export const patch = (url, body) => axios.patch(url, body, { headers: headers() }).then(r => r.data)

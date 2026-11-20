@@ -3,24 +3,26 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
-// Legacy table, no longer used: riders now sign in with their H-Pesa account.
+// An H-Fleet rider. Has its own password; hpesaPhone is the optional link to an H-Pesa wallet.
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  phone     String   @unique
-  password  String
-  pin       String
-  role      String   @default("RIDER")
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  name       String
+  phone      String   @unique
+  email      String?  @unique
+  password   String
+  pin        String?  // unused (the PIN belongs to H-Pesa); kept so older databases keep working
+  hpesaPhone String?
+  role       String   @default("RIDER")
+  createdAt  DateTime @default(now())
 }
 
 model Ride {
   id          String   @id @default(cuid())
-  riderId     String   // H-Pesa user id (one account across the apps)
+  riderId     String   // H-Fleet user id
   riderPhone  String?
   pickup      String
   pickupLat   Float?
@@ -31,7 +33,7 @@ model Ride {
   distanceKm  Float?
   fare        Float
   status      String   @default("PENDING") // PENDING, ACCEPTED, FAILED, CANCELLED, COMPLETED
-  failReason  String?
+  failReason  String? @db.Text
   driverName  String?
   createdAt   DateTime @default(now())
 
@@ -54,7 +56,7 @@ model SupportMessage {
   userName  String?
   userPhone String?
   subject   String
-  message   String
+  message   String @db.Text
   status    String   @default("OPEN")
   createdAt DateTime @default(now())
 

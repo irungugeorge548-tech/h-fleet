@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import MapView from '../components/MapView'
 import Icon from '../components/Icon'
-import { post, errMsg } from '../lib/api'
+import { get, post, errMsg } from '../lib/api'
+import ConnectHpesa from '../components/ConnectHpesa'
 import { fareForKm, haversineKm } from '../lib/fare'
 
 // Driving route from OSRM (free). Falls back to a straight line if it cannot be reached.
@@ -28,6 +29,8 @@ export default function Ride() {
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [eta, setEta] = useState(4)
+  const [linked, setLinked] = useState(undefined) // is an H-Pesa wallet connected?
+  useEffect(() => { get('/api/hpesa/status').then(r => setLinked(r.linked)).catch(() => setLinked(true)) }, [])
 
   const pickup = state?.pickup
   const dest = state?.dest
@@ -51,7 +54,7 @@ export default function Ride() {
     try {
       const r = await post('/api/rides/request', { pickup: point(pickup), destination: point(dest), distanceKm: km, pin })
       setRide(r); setStatus('tracking')
-    } catch (err) { setError(errMsg(err, 'Could not book the ride')) } finally { setBusy(false) }
+    } catch (err) { if (err?.response?.data?.code === 'NOT_LINKED') setLinked(false); else setError(errMsg(err, 'Could not book the ride')) } finally { setBusy(false) }
   }
 
   const cancel = async () => {
@@ -92,9 +95,13 @@ export default function Ride() {
             <p className="text-3xl font-bold">KES {fare}</p>
             <p className="text-sm text-gray-500">{km.toFixed(1)} km{route ? ` · ${Math.round(route.mins)} min` : ' (estimate)'}</p>
           </div>
-          <input type="password" inputMode="numeric" placeholder="H-Pesa PIN" maxLength={4} value={pin} onChange={e => setPin(e.target.value)} className="w-full mt-4 px-4 py-3.5 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-bolt" />
-          <button disabled={busy || pin.length < 4} onClick={confirm} className="w-full bg-bolt disabled:opacity-60 text-white py-4 rounded-2xl font-semibold mt-3 flex items-center justify-center gap-2"><Icon name="lock" size={18} />{busy ? 'Processing…' : `Confirm & pay KES ${fare}`}</button>
-          <p className="text-center text-xs text-gray-500 mt-2">Paid from your H-Pesa wallet</p>
+          {linked === false ? (
+            <div className="mt-4"><ConnectHpesa light onDone={() => setLinked(true)} /></div>
+          ) : (<>
+            <input type="password" inputMode="numeric" placeholder="H-Pesa PIN" maxLength={4} value={pin} onChange={e => setPin(e.target.value)} className="w-full mt-4 px-4 py-3.5 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-bolt" />
+            <button disabled={busy || pin.length < 4} onClick={confirm} className="w-full bg-bolt disabled:opacity-60 text-white py-4 rounded-2xl font-semibold mt-3 flex items-center justify-center gap-2"><Icon name="lock" size={18} />{busy ? 'Processing…' : `Confirm & pay KES ${fare}`}</button>
+            <p className="text-center text-xs text-gray-500 mt-2">Paid from your H-Pesa wallet</p>
+          </>)}
         </>)}
 
         {status === 'tracking' && (<>

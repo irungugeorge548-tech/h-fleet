@@ -19,3 +19,14 @@ Environment:
 ## Placeholders to review
 Fare rates (`backend/src/lib/fare.js` and `frontend/src/lib/fare.js`, must match): base 80, KES 35 per km, minimum 150.
 The driver shown after booking is a demo driver until the real driver side exists.
+
+
+## Accounts (v4)
+- H-Fleet has its **own** accounts (phone + password). Nothing is created in H-Pesa when you register here.
+- Connecting an H-Pesa wallet is optional and can be done any time (Wallet screen). Rides are paid from the connected wallet with its PIN.
+- H-Pesa can send people here pre-filled: `/login?register=1&name=..&phone=..&email=..` (no passwords or PINs).
+- Render env for the backend: `HPESA_API`, `HFLEET_API_KEY`, `CORS_ORIGINS`, and now **`JWT_SECRET`** (any long random string).
+
+
+## Database (v5)
+This app now stores data in TiDB Cloud (MySQL-compatible) so accounts survive restarts and deploys. Set `DATABASE_URL` on Render (see backend/.env.example). The tables are created automatically on start (`prisma db push`).

@@ -22,7 +22,7 @@ export default function App() {
     localStorage.setItem('hfleet_user', JSON.stringify(data.user))
     setToken(data.token)
   }
-  const logout = () => { localStorage.removeItem('hfleet_token'); localStorage.removeItem('hfleet_user'); setToken(null) }
+  const logout = () => { localStorage.removeItem('hfleet_token'); localStorage.removeItem('hfleet_user'); localStorage.removeItem('hfleet_hpesa_token'); setToken(null) }
 
   if (showSplash) return <Splash onDone={() => { try { sessionStorage.setItem('hfleet_splash', '1') } catch { /* ignore */ } setShowSplash(false) }} />
 
